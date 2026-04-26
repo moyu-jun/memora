@@ -8,7 +8,7 @@ import lombok.Data;
  * 登录请求
  */
 @Data
-public class LoginPasswordRequest {
+public class LoginRequest {
 
     @Schema(description = "账号（用户名/手机号/邮箱）")
     @NotBlank(message = "账号不能为空")
@@ -17,4 +17,10 @@ public class LoginPasswordRequest {
     @Schema(description = "密码")
     @NotBlank(message = "密码不能为空")
     private String password;
+
+    @Schema(description = "客户端IP，对前端隐藏", hidden = true)
+    private String ip;
+
+    @Schema(description = "客户端IP，对前端隐藏", hidden = true)
+    private String userAgent;
 }

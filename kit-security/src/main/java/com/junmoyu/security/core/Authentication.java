@@ -10,7 +10,6 @@ import java.util.Map;
 public record Authentication(
         Long userId,
         String account,
-        String accessToken,
         Collection<String> roles,
         Collection<String> authorities,
         Map<String, Object> detail
@@ -20,7 +19,7 @@ public record Authentication(
      * 创建空的认证信息
      */
     public static Authentication empty() {
-        return new Authentication(null, null, null, null, null, null);
+        return new Authentication(null, null, null, null, null);
     }
 
     /**

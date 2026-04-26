@@ -11,6 +11,8 @@ oss:
 # kit-security 配置
 security:
   enabled: true
+  access-expire: 1800     # 30 分钟（秒）
+  refresh-expire: 604800  # 7 天（秒）
   exclude-patterns:
     - /auth/login/**
     - /auth/refresh
@@ -18,6 +20,3 @@ security:
     - /api/auth/register
     - /api/async-test/**
     - /api/file/**
-  token:
-    expiration: 1800    # 30 分钟（秒）
-    refresh-expiration: 604800  # 7 天（秒）

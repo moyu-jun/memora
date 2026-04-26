@@ -1,12 +1,11 @@
 package com.junmoyu.iam.model.dto;
 
 /**
- * AccessTokenCache
+ * Redis 缓存对象
+ * auth:refresh:{token}
  */
 public record RefreshTokenCache(
         String sid,
-        Long userId,
         Long issuedAt,
-        Long expiresIn,
-        String status) {
+        Long expiresIn) {
 }

@@ -26,28 +26,17 @@ public class SecurityProperties {
     private boolean enabled = true;
 
     /**
+     * Access Token 过期时间（秒），默认 30 分钟
+     */
+    private long accessExpire = 30 * 60;
+
+    /**
+     * Refresh Token 过期时间（秒），默认 7 天
+     */
+    private long refreshExpire = 7 * 24 * 60 * 60;
+
+    /**
      * 排除的路径（不进行认证拦截）
      */
     private List<String> excludePatterns = new ArrayList<>();
-
-    /**
-     * Token 配置
-     */
-    private TokenConfig token = new TokenConfig();
-
-
-    @Getter
-    @Setter
-    public static class TokenConfig {
-
-        /**
-         * Access Token 过期时间（秒），默认 30 分钟
-         */
-        private long expiration = 30 * 60;
-
-        /**
-         * Refresh Token 过期时间（秒），默认 7 天
-         */
-        private long refreshExpiration = 7 * 24 * 60 * 60;
-    }
 }

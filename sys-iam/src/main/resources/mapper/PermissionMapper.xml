@@ -5,18 +5,19 @@
     <!--@Table sys_permission-->
     <id column="id" jdbcType="BIGINT" property="id" />
     <result column="parent_id" jdbcType="BIGINT" property="parentId" />
-    <result column="perm_name" jdbcType="VARCHAR" property="permName" />
-    <result column="perm_code" jdbcType="VARCHAR" property="permCode" />
-    <result column="perm_type" jdbcType="TINYINT" property="permType" />
+    <result column="name" jdbcType="VARCHAR" property="name" />
+    <result column="code" jdbcType="VARCHAR" property="code" />
+    <result column="type" jdbcType="TINYINT" property="type" />
     <result column="path" jdbcType="VARCHAR" property="path" />
     <result column="icon" jdbcType="VARCHAR" property="icon" />
-    <result column="sort_num" jdbcType="INTEGER" property="sortNum" />
+    <result column="sort" jdbcType="INTEGER" property="sort" />
     <result column="disable" jdbcType="TINYINT" property="disable" />
+    <result column="visible" jdbcType="TINYINT" property="visible" />
     <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
     <result column="update_time" jdbcType="TIMESTAMP" property="updateTime" />
   </resultMap>
   <sql id="Base_Column_List">
-    id, parent_id, perm_name, perm_code, perm_type, `path`, icon, sort_num, disable,
-    create_time, update_time
+    id, parent_id, `name`, code, `type`, `path`, icon, sort, `disable`, visible, create_time, 
+    update_time
   </sql>
 </mapper>

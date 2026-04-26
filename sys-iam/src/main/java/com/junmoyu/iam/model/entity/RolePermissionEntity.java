@@ -2,7 +2,7 @@ package com.junmoyu.iam.model.entity;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.junmoyu.basic.model.BaseEntity;
+import com.junmoyu.basic.model.BaseIdEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -10,19 +10,18 @@ import lombok.EqualsAndHashCode;
 import java.io.Serializable;
 
 /**
- * 用户-角色关联表
+ * 角色-权限关联表
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-@TableName(value = "sys_user_role")
-@Schema(description = "用户-角色关联表")
-public class UserRole extends BaseEntity implements Serializable {
-
-    @TableField(value = "user_id")
-    @Schema(description = "用户ID")
-    private Long userId;
+@TableName(value = "sys_role_permission")
+public class RolePermissionEntity extends BaseIdEntity implements Serializable {
 
     @TableField(value = "role_id")
     @Schema(description = "角色ID")
     private Long roleId;
+
+    @TableField(value = "permission_id")
+    @Schema(description = "权限ID")
+    private Long permissionId;
 }

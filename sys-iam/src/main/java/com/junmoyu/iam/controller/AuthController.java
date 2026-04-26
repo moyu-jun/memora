@@ -1,58 +1,77 @@
 package com.junmoyu.iam.controller;
 
-import com.junmoyu.basic.constant.BasicConst;
 import com.junmoyu.basic.model.R;
 import com.junmoyu.basic.util.HttpUtils;
-import com.junmoyu.iam.model.request.LoginPasswordRequest;
+import com.junmoyu.iam.model.request.LoginRequest;
+import com.junmoyu.iam.model.request.RefreshRequest;
+import com.junmoyu.iam.model.response.PermissionTreeNode;
 import com.junmoyu.iam.model.response.TokenResponse;
 import com.junmoyu.iam.service.AuthService;
 import com.junmoyu.security.annotation.PreAuthorize;
+import com.junmoyu.security.core.Authentication;
 import com.junmoyu.security.core.SecurityContext;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
- * 认�??��??
+ * 安全认证接口
  */
-@Tag(name = "认�??��??")
+@Tag(name = "安全认证接口")
 @RestController
-@RequestMapping("auth")
+@RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
     private final AuthService authService;
 
-    @PostMapping("login/password")
-    public R<TokenResponse> loginPassword(@RequestBody LoginPasswordRequest request, HttpServletRequest httpServletRequest) {
-        String ip = HttpUtils.getClientIp(httpServletRequest);
-        String userAgent = httpServletRequest.getHeader("User-Agent");
-        TokenResponse response = authService.loginPassword(request.getAccount(), request.getPassword(), ip, userAgent);
-        return R.success(response);
+    @PostMapping("register")
+    @Operation(summary = "用户注册")
+    public R<Boolean> register(@Valid @RequestBody LoginRequest request, HttpServletRequest httpServletRequest) {
+        return R.success();
+    }
+
+    @PostMapping("login")
+    @Operation(summary = "密码登录")
+    public R<TokenResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest httpServletRequest) {
+        request.setIp(HttpUtils.getClientIp(httpServletRequest));
+        request.setUserAgent(httpServletRequest.getHeader("User-Agent"));
+        return R.success(authService.login(request));
     }
 
     @PostMapping("logout")
     @PreAuthorize("isAuthenticated()")
-    public R<Void> logout(@RequestHeader(BasicConst.HEADER_AUTHORIZATION) String authorization) {
-        String accessToken = authorization.replace(BasicConst.TOKEN_PREFIX, "");
-        authService.logout(accessToken);
-        return R.success();
+    @Operation(summary = "退出登录")
+    public R<Boolean> logout() {
+        authService.logout();
+        return R.success(true);
     }
 
     @PostMapping("refresh")
-    public R<TokenResponse> refresh(@RequestHeader(BasicConst.HEADER_AUTHORIZATION) String authorization,
-                                    HttpServletRequest httpServletRequest) {
-        String refreshToken = authorization.replace(BasicConst.TOKEN_PREFIX, "");
-        String ip = HttpUtils.getClientIp(httpServletRequest);
-        String userAgent = httpServletRequest.getHeader("User-Agent");
-        TokenResponse response = authService.refresh(refreshToken, ip, userAgent);
-        return R.success(response);
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "刷新访问令牌")
+    public R<TokenResponse> refresh(@Valid @RequestBody RefreshRequest request, HttpServletRequest httpServletRequest) {
+        request.setIp(HttpUtils.getClientIp(httpServletRequest));
+        request.setUserAgent(httpServletRequest.getHeader("User-Agent"));
+        return R.success(authService.refresh(request));
     }
 
     @GetMapping("me")
     @PreAuthorize("isAuthenticated()")
-    public R<Object> getCurrentUser() {
+    @Operation(summary = "获取当前登录用户信息")
+    public R<Authentication> me() {
         return R.success(SecurityContext.getAuthentication());
+    }
+
+    @GetMapping("menus")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "获取当前用户可访问的菜单树")
+    public R<List<PermissionTreeNode>> menus() {
+        return R.success(authService.menus());
     }
 }

@@ -74,7 +74,7 @@ public final class JsonUtils {
      * @return 转换后的 Java 对象，如果转换失败，则返回 null
      */
     public static <T> T toObject(String value, Class<T> clz) {
-        if (StringUtils.isEmpty(value)) {
+        if (StringUtils.isBlank(value)) {
             return null;
         }
         try {
@@ -94,7 +94,7 @@ public final class JsonUtils {
      * @return 转换后的 Java 对象，如果转换失败或输入为空，则返回 null
      */
     public static <T> T toObject(String value, TypeReference<T> typeReference) {
-        if (StringUtils.isEmpty(value) || typeReference == null) {
+        if (StringUtils.isBlank(value) || typeReference == null) {
             return null;
         }
         try {
@@ -114,7 +114,7 @@ public final class JsonUtils {
      * @return 转换后的 Java 对象列表，如果转换失败或输入为空，则返回 null
      */
     public static <T> List<T> toArray(String value, Class<T> clz) {
-        if (StringUtils.isEmpty(value)) {
+        if (StringUtils.isBlank(value)) {
             return Collections.emptyList();
         }
         JavaType javaType = OBJECT_MAPPER.getTypeFactory().constructCollectionType(Collection.class, clz);

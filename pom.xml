@@ -5,12 +5,24 @@
     <artifactId>spring-boot-starter-parent</artifactId>
     <version>3.5.11</version>
   </parent>
+
   <groupId>com.junmoyu</groupId>
   <artifactId>memora</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <packaging>pom</packaging>
+
   <name>memora</name>
-  <description>基于 Java 21 和 Spring Boot 3.5 的脚手架项目</description>
+  <description>一款面向个人用户的可检索、可对话、可持续优化的 AI 知识库问答系统</description>
+
+  <modules>
+    <module>bootstrap</module>
+    <module>kit-basic</module>
+    <module>kit-oss</module>
+    <module>kit-security</module>
+    <module>sys-iam</module>
+    <module>memora-rag</module>
+  </modules>
+
   <properties>
     <!-- maven -->
     <java.version>21</java.version>
@@ -34,6 +46,7 @@
     <validation-api.version>3.1.1</validation-api.version>
     <servlet-api.version>6.1.0</servlet-api.version>
   </properties>
+
   <dependencyManagement>
     <dependencies>
       <dependency>
@@ -51,6 +64,12 @@
         <artifactId>kit-security</artifactId>
         <version>${project.version}</version>
       </dependency>
+      <dependency>
+        <groupId>${project.groupId}</groupId>
+        <artifactId>sys-iam</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
       <dependency>
         <groupId>software.amazon.awssdk</groupId>
         <artifactId>s3</artifactId>
@@ -90,6 +109,7 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
+
       <dependency>
         <groupId>org.springdoc</groupId>
         <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
@@ -132,6 +152,7 @@
       </dependency>
     </dependencies>
   </dependencyManagement>
+
   <dependencies>
     <dependency>
       <groupId>org.projectlombok</groupId>
@@ -139,6 +160,7 @@
       <optional>true</optional>
     </dependency>
   </dependencies>
+
   <build>
     <pluginManagement>
       <plugins>
@@ -156,6 +178,7 @@
         </plugin>
       </plugins>
     </pluginManagement>
+
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -180,12 +203,4 @@
       </plugin>
     </plugins>
   </build>
-  <modules>
-    <module>bootstrap</module>
-    <module>kit-basic</module>
-    <module>kit-oss</module>
-    <module>kit-security</module>
-    <module>sys-iam</module>
-    <module>memora-rag</module>
-  </modules>
 </project>

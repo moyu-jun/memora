@@ -1,6 +1,7 @@
 package com.junmoyu.iam.service;
 
 import cn.hutool.core.util.IdUtil;
+import cn.hutool.core.util.RandomUtil;
 import com.junmoyu.basic.exception.AuthException;
 import com.junmoyu.basic.model.AuthErrorCode;
 import com.junmoyu.basic.util.RedisUtils;
@@ -8,11 +9,15 @@ import com.junmoyu.iam.model.constant.AuthConst;
 import com.junmoyu.iam.model.dto.AccessTokenCache;
 import com.junmoyu.iam.model.dto.AuthSessionCache;
 import com.junmoyu.iam.model.dto.RefreshTokenCache;
-import com.junmoyu.iam.model.dto.UserPermissionCache;
 import com.junmoyu.iam.model.entity.UserEntity;
-import com.junmoyu.iam.model.enums.AuthCacheStatusEnum;
+import com.junmoyu.iam.model.request.LoginRequest;
+import com.junmoyu.iam.model.request.RefreshRequest;
+import com.junmoyu.iam.model.response.PermissionTreeNode;
 import com.junmoyu.iam.model.response.TokenResponse;
+import com.junmoyu.iam.repository.UserRepository;
 import com.junmoyu.security.SecurityProperties;
+import com.junmoyu.security.core.Authentication;
+import com.junmoyu.security.core.SecurityContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -20,245 +25,129 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 /**
- * Auth service backed by Redis session model.
+ * AuthService
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
+    private final UserRepository userRepository;
+
     private final RedisUtils redisUtils;
     private final PasswordEncoder passwordEncoder;
     private final SecurityProperties securityProperties;
-    private final UserService userService;
-    private final CacheService cacheService;
 
-    /**
-     * 账号密码登录
-     */
-    public TokenResponse loginPassword(String account, String password, String ip, String userAgent) {
-        if (StringUtils.isBlank(account) || StringUtils.isBlank(password)) {
-            throw new AuthException(AuthErrorCode.AUTH_FAILED);
-        }
-
-        UserEntity user = userService.getUserByAccount(account);
+    public TokenResponse login(LoginRequest request) {
+        UserEntity user = userRepository.getUserByAccount(request.getAccount());
         if (user == null) {
             throw new AuthException(AuthErrorCode.AUTH_FAILED);
         }
-        if (!passwordEncoder.matches(password, user.getPassword())) {
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new AuthException(AuthErrorCode.AUTH_FAILED);
         }
 
-        long accessTokenTtlSeconds = securityProperties.getToken().getExpiration();
-        long refreshTokenTtlSeconds = securityProperties.getToken().getRefreshExpiration();
+        long accessExpire = securityProperties.getAccessExpire() + RandomUtil.randomInt(100, 200);
+        long refreshExpire = securityProperties.getRefreshExpire() + RandomUtil.randomInt(200, 400);
         long now = System.currentTimeMillis();
 
+        Long userId = user.getId();
         String sessionId = IdUtil.simpleUUID();
         String accessToken = IdUtil.simpleUUID();
         String refreshToken = IdUtil.simpleUUID();
 
-        String userPermissionKey = AuthConst.buildUserPermissionKey(user.getId());
-        String userPermissionVersionKey = AuthConst.buildUserPermissionVersionKey(user.getId());
+        List<String> roleCodes = userRepository.mapper().listRoles(userId);
+        List<String> permissionCodes = userRepository.mapper().listPermissions(userId);
 
-        // perm_ver: 使用 increment 保证并发下原子的版本递增
-        Long permVerObj = redisUtils.get(userPermissionVersionKey, Long.class);
-        int permVer;
-        if (permVerObj == null) {
-            permVer = 1;
-            redisUtils.set(userPermissionVersionKey, permVer);
-        } else {
-            permVer = permVerObj.intValue();
-        }
+        // 清除该用户所有认证相关缓存
+        clearAuthCache(userId);
 
-        // 权限快照: 优先使用已有缓存，否则从 DB 加载
-        UserPermissionCache userPermissionCache = redisUtils.get(userPermissionKey, UserPermissionCache.class);
-        if (userPermissionCache == null) {
-            List<String> roles = userService.getAllRoles(user.getId());
-            List<String> permissions = userService.getAllPermissions(user.getId());
-            userPermissionCache = new UserPermissionCache(user.getId(), user.getUsername(), user.getOrgId(),
-                    roles, permissions, permVer, now);
-            redisUtils.set(userPermissionKey, userPermissionCache, refreshTokenTtlSeconds);
-        }
+        // 缓存新数据
+        redisUtils.set(AuthConst.userSessionKey(userId), sessionId, refreshExpire);
 
-        // 写入 session
-        String sessionKey = AuthConst.buildSessionKey(sessionId);
-        AuthSessionCache authSessionCache = new AuthSessionCache(sessionId, user.getId(), accessToken, refreshToken,
-                ip, userAgent, now, AuthCacheStatusEnum.ACTIVE.name());
-        redisUtils.set(sessionKey, authSessionCache, refreshTokenTtlSeconds);
+        AuthSessionCache sessionCache = new AuthSessionCache(sessionId, userId, user.getUsername(), accessToken,
+                refreshToken, roleCodes, permissionCodes, request.getIp(), request.getUserAgent(), now);
+        redisUtils.set(AuthConst.sessionKey(sessionId), sessionCache, refreshExpire);
 
-        // 维护用户的活跃 session 集合
-        String userSessionKey = AuthConst.buildUserSessionKey(user.getId());
-        redisUtils.sAdd(userSessionKey, sessionId);
-        redisUtils.expire(userSessionKey, refreshTokenTtlSeconds);
+        AccessTokenCache accessTokenCache = new AccessTokenCache(sessionId, userId, user.getUsername(),
+                request.getIp(), request.getUserAgent(), now, accessExpire, roleCodes, permissionCodes);
+        redisUtils.set(AuthConst.accessKey(accessToken), accessTokenCache, accessExpire);
 
-        // 写入 access token
-        String accessTokenKey = AuthConst.buildAccessTokenKey(accessToken);
-        AccessTokenCache accessTokenCache = new AccessTokenCache(sessionId, user.getId(), accessToken, permVer, ip, userAgent,
-                now, now + accessTokenTtlSeconds * 1000, AuthCacheStatusEnum.ACTIVE.name());
-        redisUtils.set(accessTokenKey, accessTokenCache, accessTokenTtlSeconds);
+        RefreshTokenCache refreshTokenCache = new RefreshTokenCache(sessionId, now, refreshExpire);
+        redisUtils.set(AuthConst.refreshKey(refreshToken), refreshTokenCache, refreshExpire);
 
-        // 写入 refresh token
-        String refreshTokenKey = AuthConst.buildRefreshTokenKey(refreshToken);
-        RefreshTokenCache refreshTokenCache = new RefreshTokenCache(sessionId, user.getId(), now,
-                now + refreshTokenTtlSeconds * 1000, AuthCacheStatusEnum.ACTIVE.name());
-        redisUtils.set(refreshTokenKey, refreshTokenCache, refreshTokenTtlSeconds);
-
-        log.info("登录成功: userId={}, sessionId={}", user.getId(), sessionId);
-        return new TokenResponse(accessToken, refreshToken, accessTokenTtlSeconds);
+        return new TokenResponse(accessToken, refreshToken, accessExpire);
     }
 
-    /**
-     * 退出登录：撤销 access token、refresh token 和 session，清理权限缓存。
-     */
-    public void logout(String accessToken) {
-        if (StringUtils.isBlank(accessToken)) {
-            return;
-        }
-        String accessTokenKey = AuthConst.buildAccessTokenKey(accessToken);
-        AccessTokenCache accessTokenCache = redisUtils.get(accessTokenKey, AccessTokenCache.class);
-        if (accessTokenCache == null) {
-            return;
-        }
-
-        // 标记 access token 已吊销
-        revokeAccessToken(accessTokenKey, accessTokenCache);
-
-        String sessionKey = AuthConst.buildSessionKey(accessTokenCache.sid());
-        AuthSessionCache sessionCache = redisUtils.get(sessionKey, AuthSessionCache.class);
-        if (sessionCache != null) {
-            // 吊销 refresh token
-            String refreshTokenKey = AuthConst.buildRefreshTokenKey(sessionCache.refreshToken());
-            revokeRefreshToken(refreshTokenKey, sessionCache);
-
-            // 吊销 session
-            revokeSession(sessionKey, sessionCache);
-
-            // 从用户活跃 session 集合中移除
-            String userSessionKey = AuthConst.buildUserSessionKey(accessTokenCache.userId());
-            redisUtils.sRemove(userSessionKey, accessTokenCache.sid());
-        }
-
-        // 清理本地权限缓存
-        cacheService.evictPermissions(accessTokenCache.userId());
-        log.info("退出登录成功: userId={}, sessionId={}", accessTokenCache.userId(), accessTokenCache.sid());
+    public void logout() {
+        Authentication authentication = SecurityContext.getAuthentication();
+        clearAuthCache(authentication.userId());
     }
 
-    private void revokeAccessToken(String key, AccessTokenCache cache) {
-        Long remainingTtl = redisUtils.getExpire(key, TimeUnit.SECONDS);
-        if (remainingTtl != null && remainingTtl > 0) {
-            AccessTokenCache revoked = new AccessTokenCache(
-                    cache.sid(), cache.userId(), cache.accessToken(), cache.permVer(),
-                    cache.clientIp(), cache.userAgent(), cache.issuedAt(), cache.expiresIn(),
-                    AuthCacheStatusEnum.REVOKED.name());
-            redisUtils.set(key, revoked, remainingTtl, TimeUnit.SECONDS);
+    public TokenResponse refresh(RefreshRequest request) {
+        RefreshTokenCache oldRefreshCache = redisUtils.get(AuthConst.refreshKey(request.getRefreshToken()), RefreshTokenCache.class);
+        if (oldRefreshCache == null) {
+            throw new AuthException(AuthErrorCode.AUTH_FAILED);
         }
-    }
-
-    private void revokeRefreshToken(String key, AuthSessionCache sessionCache) {
-        Long remainingTtl = redisUtils.getExpire(key, TimeUnit.SECONDS);
-        if (remainingTtl != null && remainingTtl > 0) {
-            RefreshTokenCache revoked = new RefreshTokenCache(
-                    sessionCache.sid(), sessionCache.userId(), 0L, 0L,
-                    AuthCacheStatusEnum.REVOKED.name());
-            redisUtils.set(key, revoked, remainingTtl, TimeUnit.SECONDS);
-        }
-    }
-
-    private void revokeSession(String key, AuthSessionCache cache) {
-        Long remainingTtl = redisUtils.getExpire(key, TimeUnit.SECONDS);
-        if (remainingTtl != null && remainingTtl > 0) {
-            AuthSessionCache revoked = new AuthSessionCache(
-                    cache.sid(), cache.userId(), cache.accessToken(), cache.refreshToken(),
-                    cache.clientIp(), cache.userAgent(), cache.loginAt(),
-                    AuthCacheStatusEnum.REVOKED.name());
-            redisUtils.set(key, revoked, remainingTtl, TimeUnit.SECONDS);
-        }
-    }
-
-    /**
-     * 刷新 access token：校验 refresh token 有效性，轮换新旧 token（Refresh Token Rotation）。
-     */
-    public TokenResponse refresh(String refreshToken, String ip, String userAgent) {
-        if (StringUtils.isBlank(refreshToken)) {
+        AuthSessionCache oldSessionCache = redisUtils.get(AuthConst.sessionKey(oldRefreshCache.sid()), AuthSessionCache.class);
+        if (oldSessionCache == null) {
             throw new AuthException(AuthErrorCode.AUTH_FAILED);
         }
 
-        String refreshTokenKey = AuthConst.buildRefreshTokenKey(refreshToken);
-        RefreshTokenCache refreshCache = redisUtils.get(refreshTokenKey, RefreshTokenCache.class);
-        if (refreshCache == null || !AuthCacheStatusEnum.ACTIVE.name().equals(refreshCache.status())) {
-            throw new AuthException(AuthErrorCode.AUTH_FAILED);
-        }
-        if (refreshCache.expiresIn() <= System.currentTimeMillis()) {
-            throw new AuthException(AuthErrorCode.TOKEN_EXPIRED);
+        if (!request.getIp().equalsIgnoreCase(oldSessionCache.clientIp())
+                || !request.getUserAgent().equalsIgnoreCase(oldSessionCache.userAgent())) {
+            log.error("客户端IP / User-Agent 发生变化，IP 变化：{} -> {}，User-Agent 变化：{} -> {}",
+                    oldSessionCache.clientIp(), request.getIp(), oldSessionCache.userAgent(), request.getUserAgent());
         }
 
-        // 校验 session 是否仍然有效
-        String sessionKey = AuthConst.buildSessionKey(refreshCache.sid());
-        AuthSessionCache sessionCache = redisUtils.get(sessionKey, AuthSessionCache.class);
-        if (sessionCache == null || !AuthCacheStatusEnum.ACTIVE.name().equals(sessionCache.status())) {
-            throw new AuthException(AuthErrorCode.AUTH_FAILED);
-        }
-
-        long accessTokenTtlSeconds = securityProperties.getToken().getExpiration();
-        long refreshTokenTtlSeconds = securityProperties.getToken().getRefreshExpiration();
+        long accessExpire = securityProperties.getAccessExpire() + RandomUtil.randomInt(100, 200);
+        long refreshExpire = securityProperties.getRefreshExpire() + RandomUtil.randomInt(200, 400);
         long now = System.currentTimeMillis();
 
-        Long userId = refreshCache.userId();
-        String sid = refreshCache.sid();
+        Long userId = oldSessionCache.userId();
+        String sid = oldRefreshCache.sid();
+        String accessToken = IdUtil.simpleUUID();
+        String refreshToken = IdUtil.simpleUUID();
 
-        // 读取当前权限版本和权限快照（可能已在 refresh 间隔内变更）
-        String userPermissionKey = AuthConst.buildUserPermissionKey(userId);
-        UserPermissionCache permCache = redisUtils.get(userPermissionKey, UserPermissionCache.class);
-        int permVer;
-        if (permCache != null) {
-            permVer = permCache.permVer();
-        } else {
-            // 权限缓存缺失时回源 DB 重建（refresh 是低频控制面，DB 查询可接受）
-            Long permVerObj = redisUtils.get(AuthConst.buildUserPermissionVersionKey(userId), Long.class);
-            permVer = permVerObj != null ? permVerObj.intValue() : 1;
-            UserEntity user = userService.getById(userId);
-            String username = user != null ? user.getUsername() : String.valueOf(userId);
-            List<String> roles = userService.getAllRoles(userId);
-            List<String> permissions = userService.getAllPermissions(userId);
-            permCache = new UserPermissionCache(userId, username, user != null ? user.getOrgId() : null,
-                    roles, permissions, permVer, now);
-            redisUtils.set(userPermissionKey, permCache, refreshTokenTtlSeconds);
-        }
 
-        // 签发新的 access token
-        String newAccessToken = IdUtil.simpleUUID();
-        String newAccessTokenKey = AuthConst.buildAccessTokenKey(newAccessToken);
-        AccessTokenCache newAccessCache = new AccessTokenCache(sid, userId, newAccessToken, permVer, ip, userAgent,
-                now, now + accessTokenTtlSeconds * 1000, AuthCacheStatusEnum.ACTIVE.name());
-        redisUtils.set(newAccessTokenKey, newAccessCache, accessTokenTtlSeconds);
+        AuthSessionCache authSessionCache = new AuthSessionCache(sid, userId, oldSessionCache.username(),
+                accessToken, refreshToken, oldSessionCache.roles(), oldSessionCache.permissions(),
+                request.getIp(), request.getUserAgent(), oldSessionCache.loginAt());
+        redisUtils.set(AuthConst.sessionKey(sid), authSessionCache, refreshExpire);
 
-        // Refresh Token Rotation：吊销旧的 refresh token，签发新的
-        String newRefreshToken = IdUtil.simpleUUID();
-        String newRefreshTokenKey = AuthConst.buildRefreshTokenKey(newRefreshToken);
-        RefreshTokenCache newRefreshCache = new RefreshTokenCache(sid, userId, now,
-                now + refreshTokenTtlSeconds * 1000, AuthCacheStatusEnum.ACTIVE.name());
-        redisUtils.set(newRefreshTokenKey, newRefreshCache, refreshTokenTtlSeconds);
+        AccessTokenCache accessTokenCache = new AccessTokenCache(sid, userId, authSessionCache.username(), request.getIp(),
+                request.getUserAgent(), now, accessExpire, authSessionCache.roles(), authSessionCache.permissions());
+        redisUtils.set(AuthConst.accessKey(accessToken), accessTokenCache, accessExpire);
 
-        // 吊销旧的 refresh token
-        revokeRefreshToken(refreshTokenKey, sessionCache);
+        RefreshTokenCache refreshTokenCache = new RefreshTokenCache(sid, now, refreshExpire);
+        redisUtils.set(AuthConst.refreshKey(refreshToken), refreshTokenCache, refreshExpire);
 
-        // 更新 session 中的 token 绑定
-        AuthSessionCache updatedSession = new AuthSessionCache(
-                sid, userId, newAccessToken, newRefreshToken,
-                sessionCache.clientIp(), sessionCache.userAgent(), sessionCache.loginAt(),
-                AuthCacheStatusEnum.ACTIVE.name());
-        Long sessionTtl = redisUtils.getExpire(sessionKey, TimeUnit.SECONDS);
-        if (sessionTtl != null && sessionTtl > 0) {
-            redisUtils.set(sessionKey, updatedSession, sessionTtl, TimeUnit.SECONDS);
-        }
+        // 清理旧数据
+        redisUtils.delete(AuthConst.accessKey(oldSessionCache.accessToken()));
+        redisUtils.delete(AuthConst.refreshKey(oldSessionCache.refreshToken()));
 
-        // 失效旧的本地权限缓存，使下一个请求重新加载
-        cacheService.evictPermissions(userId);
-
-        log.info("Token 刷新成功: userId={}, sessionId={}", userId, sid);
-        return new TokenResponse(newAccessToken, newRefreshToken, accessTokenTtlSeconds);
+        return new TokenResponse(accessToken, refreshToken, accessExpire);
     }
+
+    public List<PermissionTreeNode> menus() {
+        return null;
+    }
+
+    private void clearAuthCache(Long userId) {
+        String sid = redisUtils.get(AuthConst.userSessionKey(userId), String.class);
+
+        if (StringUtils.isNotBlank(sid)) {
+            AuthSessionCache sessionCache = redisUtils.get(AuthConst.sessionKey(sid), AuthSessionCache.class);
+            if (sessionCache != null) {
+                redisUtils.delete(AuthConst.sessionKey(sid));
+                redisUtils.delete(AuthConst.accessKey(sessionCache.accessToken()));
+                redisUtils.delete(AuthConst.refreshKey(sessionCache.refreshToken()));
+                redisUtils.delete(AuthConst.userSessionKey(userId));
+            }
+        }
+    }
+
 }
