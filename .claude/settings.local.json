@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./mvnw clean *)",
+      "Bash(./mvnw test *)",
+      "Bash(./mvnw compile *)",
+      "Bash(cd /d D:\\\\project\\\\java\\\\spring-boot-scaffold)",
+      "Bash(grep -r \"context-path\\\\|contextPath\\\\|server.servlet\" --include=\"*.yml\" --include=\"*.yaml\" --include=\"*.properties\")",
+      "Bash(./mvnw dependency:tree -pl sys-iam -Dincludes=cn.hutool)"
+    ]
+  }
+}

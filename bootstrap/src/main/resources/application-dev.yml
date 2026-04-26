@@ -1,0 +1,73 @@
+server:
+  port: 8080
+
+spring:
+  servlet:
+    multipart:
+      # 单个文件大小
+      max-file-size: 50MB
+      # 单次请求的文件大小
+      max-request-size: 200MB
+      # 超过10MB的文件写入磁盘
+      file-size-threshold: 10MB
+      # 临时文件存储目录
+      location: /data/upload/temp
+
+# 数据库配置
+database:
+  host: 127.0.0.1
+  port: 3306
+  name: scaffold
+  username: root
+  password: 123456
+
+# Redis 缓存配置
+redis:
+  host: localhost
+  port: 6379
+  database: 0
+  password: 123456
+
+# 可重复读 Request, 以下为默认配置，可删除
+request:
+  repeatable:
+    enabled: true
+    max-payload-size: 10MB
+
+# 接口文档配置
+springdoc:
+  apiDocs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+# 监控端点
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info,metrics,prometheus"
+  endpoint:
+    health:
+      show-details: always
+
+# 日志配置
+logging:
+  # 日志文件存储路径（文件名称在 logback-spring.xml 中固定）
+  file:
+    path: /var/log/${spring.application.name}
+  # 日志级别配置 - 生产环境使用更高级别
+  level:
+    root: INFO
+    # Spring 框架
+    org.springframework: WARN
+    org.springframework.web: WARN
+    org.springframework.boot: WARN
+    org.springframework.boot.autoconfigure: ERROR
+    # 项目包 - 生产环境使用 INFO 级别
+    com.junmoyu: DEBUG
+
+# mybatis plus SQL 日志打印
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
