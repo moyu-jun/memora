@@ -3,15 +3,16 @@ package com.junmoyu.iam.controller;
 import com.junmoyu.basic.model.PageResult;
 import com.junmoyu.basic.model.R;
 import com.junmoyu.basic.model.SearchPageQuery;
-import com.junmoyu.iam.model.request.RoleCreateUpdateRequest;
-import com.junmoyu.iam.model.request.RoleUpdatePermissionRequest;
-import com.junmoyu.iam.model.response.RoleResponse;
+import com.junmoyu.iam.model.request.*;
+import com.junmoyu.iam.model.response.*;
 import com.junmoyu.iam.service.RoleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 角色管理接口
@@ -24,21 +25,9 @@ public class RoleController {
 
     private final RoleService roleService;
 
-    @GetMapping()
-    @Operation(summary = "分页/列表查询角色列表")
-    public R<PageResult<RoleResponse>> page(SearchPageQuery query) {
-        return R.success();
-    }
-
     @PostMapping()
     @Operation(summary = "新增角色")
     public R<Long> create(@Valid @RequestBody RoleCreateUpdateRequest request) {
-        return R.success();
-    }
-
-    @PutMapping("{id}")
-    @Operation(summary = "修改角色")
-    public R<Boolean> update(@PathVariable Long id, @Valid @RequestBody RoleCreateUpdateRequest request) {
         return R.success();
     }
 
@@ -48,9 +37,51 @@ public class RoleController {
         return R.success();
     }
 
+    @PutMapping("{id}")
+    @Operation(summary = "更新角色信息")
+    public R<Boolean> update(@PathVariable Long id, @Valid @RequestBody RoleCreateUpdateRequest request) {
+        return R.success();
+    }
+
+    @GetMapping("{id}")
+    @Operation(summary = "获取角色详情")
+    public R<RoleResponse> detail(@PathVariable Long id) {
+        return R.success();
+    }
+
+    @GetMapping("page")
+    @Operation(summary = "分页查询角色列表")
+    public R<PageResult<RoleResponse>> page(SearchPageQuery query) {
+        return R.success();
+    }
+
+    @GetMapping("list")
+    @Operation(summary = "查询角色列表 - 不分页")
+    public R<List<RoleListResponse>> list(SearchPageQuery query) {
+        return R.success();
+    }
+
+    @PutMapping("{id}/disable")
+    @Operation(summary = "角色禁用")
+    public R<Boolean> disable(@PathVariable Long id) {
+        return R.success();
+    }
+
+    @PutMapping("{id}/enable")
+    @Operation(summary = "角色启用")
+    public R<Boolean> enable(@PathVariable Long id) {
+        return R.success();
+    }
+
+    @GetMapping("{id}/permissions")
+    @Operation(summary = "查询角色拥有的权限ID列表")
+    public R<List<Long>> listPermissions(@PathVariable Long id) {
+        return R.success();
+    }
+
     @PutMapping("{id}/permissions")
-    @Operation(summary = "为角色分配权限资源")
-    public R<Boolean> updatePermissions(@PathVariable Long id, @Valid @RequestBody RoleUpdatePermissionRequest request) {
+    @Operation(summary = "设置角色权限（全量替换）")
+    public R<Boolean> updatePermissions(@PathVariable Long id, @RequestBody RoleUpdatePermissionRequest request) {
         return R.success();
     }
 }

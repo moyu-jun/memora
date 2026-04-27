@@ -1,5 +1,6 @@
 package com.junmoyu.iam.model.response;
 
+import com.junmoyu.iam.model.enums.GenderEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -10,23 +11,19 @@ import java.util.List;
  * 用户详情响应
  */
 @Data
-@Schema(description = "用户详情响应")
 public class UserDetailResponse {
 
     @Schema(description = "主键ID")
     private Long id;
 
-    @Schema(description = "所属主组织架构ID")
-    private Long orgId;
-
-    @Schema(description = "所属组织名称")
-    private String orgName;
-
     @Schema(description = "系统用户名/登录名")
     private String username;
 
     @Schema(description = "真实姓名/昵称")
-    private String realName;
+    private String nickname;
+
+    @Schema(description="性别：0-保密，1-男，2-女")
+    private GenderEnum gender;
 
     @Schema(description = "用户头像URL")
     private String avatar;
@@ -46,9 +43,6 @@ public class UserDetailResponse {
     @Schema(description = "更新时间")
     private Date updateTime;
 
-    @Schema(description = "已分配角色ID列表")
-    private List<Long> roleIds;
-
-    @Schema(description = "所属用户组ID列表")
-    private List<Long> groupIds;
+    @Schema(description = "已分配角色列表")
+    private List<RoleListResponse> roles;
 }

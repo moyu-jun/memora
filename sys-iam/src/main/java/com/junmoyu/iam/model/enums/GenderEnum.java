@@ -17,8 +17,8 @@ public enum GenderEnum {
     FEMALE(2, "女");
 
     @EnumValue
-    private final Integer code;
-
     @JsonValue
+    private final Integer code;
+    
     private final String desc;
 }

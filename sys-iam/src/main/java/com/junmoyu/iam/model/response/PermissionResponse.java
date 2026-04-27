@@ -1,30 +1,37 @@
-package com.junmoyu.iam.model.request;
+package com.junmoyu.iam.model.response;
 
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.junmoyu.basic.model.BaseEntity;
 import com.junmoyu.iam.model.enums.PermissionTypeEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+import java.io.Serializable;
+import java.util.Date;
 
 /**
- * 新增/修改权限资源请求
+ * 权限资源表
  */
 @Data
-@Schema(description = "新增/修改权限资源请求")
-public class PermissionCreateUpdateRequest {
+public class PermissionResponse implements Serializable {
+
+    @Schema(description = "主键ID")
+    private Long id;
 
     @Schema(description = "父级权限ID，顶级为0")
     private Long parentId;
 
+    @Schema(description = "父级权限名称，顶级为0")
+    private String parentName;
+
     @Schema(description = "权限/菜单名称")
-    @NotBlank(message = "权限名称不能为空")
     private String name;
 
     @Schema(description = "权限标识（如：user:add, menu:sys）")
     private String code;
 
     @Schema(description = "权限类型：1-目录，2-菜单，3-按钮")
-    @NotNull(message = "权限类型不能为空")
     private PermissionTypeEnum type;
 
     @Schema(description = "路由地址或API路径")
@@ -41,4 +48,10 @@ public class PermissionCreateUpdateRequest {
 
     @Schema(description = "可见状态：0-不可见，1-可见")
     private Boolean visible;
+
+    @Schema(description = "创建时间")
+    private Date createTime;
+
+    @Schema(description = "更新时间")
+    private Date updateTime;
 }

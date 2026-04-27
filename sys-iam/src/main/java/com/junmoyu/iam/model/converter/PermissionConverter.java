@@ -1,6 +1,7 @@
 package com.junmoyu.iam.model.converter;
 
 import com.junmoyu.iam.model.entity.PermissionEntity;
+import com.junmoyu.iam.model.response.PermissionResponse;
 import com.junmoyu.iam.model.response.PermissionTreeNode;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -16,4 +17,7 @@ public interface PermissionConverter {
 
     @Mapping(target = "children", ignore = true)
     PermissionTreeNode toTreeNode(PermissionEntity entity);
+
+    @Mapping(target = "parentName", ignore = true)
+    PermissionResponse toResponse(PermissionEntity entity);
 }

@@ -12,7 +12,6 @@
 | PUT    | /api/users/{id}/disable  | 用户禁用      |
 | PUT    | /api/users/{id}/enable   | 用户启用      |
 | PUT    | /api/users/{id}/password | 重置密码      |
-| GET    | /api/users/{id}/roles    | 查询用户拥有的角色 |
 
 ---
 
@@ -24,7 +23,8 @@
 | DELETE | /api/roles/{id}             | 删除角色         |
 | PUT    | /api/roles/{id}             | 更新角色         |
 | GET    | /api/roles/{id}             | 查询角色详情       |
-| GET    | /api/roles                  | 分页查询角色列表     |
+| GET    | /api/roles/page             | 分页查询角色列表     |
+| GET    | /api/roles/list             | 查询角色列表（不分页）  |
 | PUT    | /api/roles/{id}/disable     | 禁用角色         |
 | PUT    | /api/roles/{id}/enable      | 启用角色         |
 | GET    | /api/roles/{id}/permissions | 查询角色拥有的权限    |

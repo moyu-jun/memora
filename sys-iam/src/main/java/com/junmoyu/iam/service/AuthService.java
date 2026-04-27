@@ -14,6 +14,7 @@ import com.junmoyu.iam.model.request.LoginRequest;
 import com.junmoyu.iam.model.request.RefreshRequest;
 import com.junmoyu.iam.model.response.PermissionTreeNode;
 import com.junmoyu.iam.model.response.TokenResponse;
+import com.junmoyu.iam.repository.PermissionRepository;
 import com.junmoyu.iam.repository.UserRepository;
 import com.junmoyu.security.SecurityProperties;
 import com.junmoyu.security.core.Authentication;
@@ -35,6 +36,7 @@ import java.util.List;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final PermissionRepository permissionRepository;
 
     private final RedisUtils redisUtils;
     private final PasswordEncoder passwordEncoder;
@@ -59,8 +61,8 @@ public class AuthService {
         String accessToken = IdUtil.simpleUUID();
         String refreshToken = IdUtil.simpleUUID();
 
-        List<String> roleCodes = userRepository.mapper().listRoles(userId);
-        List<String> permissionCodes = userRepository.mapper().listPermissions(userId);
+        List<String> roleCodes = userRepository.listRoleCodes(userId);
+        List<String> permissionCodes = userRepository.listPermissionCodes(userId);
 
         // 清除该用户所有认证相关缓存
         clearAuthCache(userId);
@@ -133,7 +135,7 @@ public class AuthService {
     }
 
     public List<PermissionTreeNode> menus() {
-        return null;
+        return permissionRepository.tree(2);
     }
 
     private void clearAuthCache(Long userId) {

@@ -4,8 +4,10 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.junmoyu.basic.model.BaseEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 
@@ -15,6 +17,7 @@ import java.io.Serializable;
 @Data
 @EqualsAndHashCode(callSuper=true)
 @TableName(value = "sys_user_role")
+@NoArgsConstructor
 public class UserRoleEntity extends BaseEntity implements Serializable {
 
     @TableField(value = "user_id")
@@ -24,4 +27,9 @@ public class UserRoleEntity extends BaseEntity implements Serializable {
     @TableField(value = "role_id")
     @Schema(description="角色ID")
     private Long roleId;
+
+    public UserRoleEntity(Long userId, Long roleId) {
+        this.userId = userId;
+        this.roleId = roleId;
+    }
 }
