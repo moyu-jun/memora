@@ -1,13 +1,8 @@
-package com.junmoyu.iam.repository;
+package com.junmoyu.iam.util;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.junmoyu.iam.mapper.PermissionMapper;
 import com.junmoyu.iam.model.converter.PermissionConverter;
 import com.junmoyu.iam.model.entity.PermissionEntity;
 import com.junmoyu.iam.model.response.PermissionTreeNode;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -17,32 +12,11 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * PermissionRepository
- *
- * @author mjwang17
+ * PermissionUtils
  */
-@Slf4j
-@Repository
-@RequiredArgsConstructor
-public class PermissionRepository {
+public class PermissionUtils {
 
-    private final PermissionMapper permissionMapper;
-
-    /**
-     * 获取菜单权限数
-     *
-     * @param level 2: 目录和菜单；3：全部权限
-     */
-    public List<PermissionTreeNode> tree(Integer level) {
-        List<PermissionEntity> permissions = permissionMapper.selectList(new LambdaQueryWrapper<PermissionEntity>()
-                .le(PermissionEntity::getType, level)
-                .eq(PermissionEntity::getDisable, Boolean.FALSE));
-        List<PermissionTreeNode> permissionTreeNodes = buildTree(permissions);
-        sortTree(permissionTreeNodes);
-        return permissionTreeNodes;
-    }
-
-    private List<PermissionTreeNode> buildTree(List<PermissionEntity> permissions) {
+    public static List<PermissionTreeNode> buildTree(List<PermissionEntity> permissions) {
         // 1. 实体映射为树节点
         List<PermissionTreeNode> nodes = permissions.stream()
                 .map(PermissionConverter.INSTANCE::toTreeNode)
@@ -77,7 +51,7 @@ public class PermissionRepository {
     /**
      * 按 sort 字段递归排序
      */
-    private void sortTree(List<PermissionTreeNode> nodes) {
+    public static void sortTree(List<PermissionTreeNode> nodes) {
         if (nodes == null || nodes.isEmpty()) {
             return;
         }

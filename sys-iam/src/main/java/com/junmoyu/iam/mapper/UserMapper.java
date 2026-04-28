@@ -23,7 +23,7 @@ public interface UserMapper extends BaseMapper<UserEntity> {
     List<RoleEntity> listRoles(@Param("userId") Long userId);
 
     /**
-     * 根据用户ID获取用户全部权限标识
+     * 根据用户ID获取用户全部权限标识（权限未禁用，角色未禁用）
      *
      * @param userId 用户ID
      * @return 全部权限标识

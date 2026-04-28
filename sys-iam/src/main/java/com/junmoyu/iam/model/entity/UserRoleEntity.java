@@ -2,9 +2,8 @@ package com.junmoyu.iam.model.entity;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.junmoyu.basic.model.BaseEntity;
+import com.junmoyu.basic.model.BaseIdEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -18,7 +17,7 @@ import java.io.Serializable;
 @EqualsAndHashCode(callSuper=true)
 @TableName(value = "sys_user_role")
 @NoArgsConstructor
-public class UserRoleEntity extends BaseEntity implements Serializable {
+public class UserRoleEntity extends BaseIdEntity implements Serializable {
 
     @TableField(value = "user_id")
     @Schema(description="用户ID")

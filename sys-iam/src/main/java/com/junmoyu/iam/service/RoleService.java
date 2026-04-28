@@ -1,7 +1,6 @@
 package com.junmoyu.iam.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.junmoyu.basic.constant.BasicConst;
 import com.junmoyu.basic.exception.BusinessException;
@@ -9,23 +8,23 @@ import com.junmoyu.basic.model.PageResult;
 import com.junmoyu.basic.model.SearchPageQuery;
 import com.junmoyu.iam.mapper.RoleMapper;
 import com.junmoyu.iam.mapper.RolePermissionMapper;
-import com.junmoyu.iam.mapper.UserMapper;
 import com.junmoyu.iam.mapper.UserRoleMapper;
 import com.junmoyu.iam.model.converter.RoleConverter;
-import com.junmoyu.iam.model.converter.UserConverter;
-import com.junmoyu.iam.model.entity.*;
-import com.junmoyu.iam.model.request.*;
+import com.junmoyu.iam.model.entity.RoleEntity;
+import com.junmoyu.iam.model.entity.RolePermissionEntity;
+import com.junmoyu.iam.model.entity.UserRoleEntity;
+import com.junmoyu.iam.model.request.RoleCreateUpdateRequest;
+import com.junmoyu.iam.model.request.RoleUpdatePermissionRequest;
+import com.junmoyu.iam.model.response.RoleListResponse;
 import com.junmoyu.iam.model.response.RoleResponse;
-import com.junmoyu.iam.model.response.UserDetailResponse;
-import com.junmoyu.iam.model.response.UserResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -104,6 +103,20 @@ public class RoleService {
         }
         List<RoleResponse> result = RoleConverter.INSTANCE.toResponse(rolePage.getRecords());
         return new PageResult<>(rolePage.getTotal(), result);
+    }
+
+    public List<RoleListResponse> list(SearchPageQuery query) {
+        Page<RoleEntity> page = new Page<>(1, query.getSize() == null ? 20 : query.getSize());
+        LambdaQueryWrapper<RoleEntity> queryWrapper = new LambdaQueryWrapper<RoleEntity>()
+                .eq(RoleEntity::getDisable, false)
+                .like(StringUtils.isNotBlank(query.getKeywords()), RoleEntity::getName, query.getKeywords())
+                .orderByAsc(RoleEntity::getSort).orderByDesc(RoleEntity::getId);
+        Page<RoleEntity> rolePage = roleMapper.selectPage(page, queryWrapper);
+
+        if (CollectionUtils.isEmpty(rolePage.getRecords())) {
+            return Collections.emptyList();
+        }
+        return RoleConverter.INSTANCE.toList(rolePage.getRecords());
     }
 
     public void disable(Long id) {

@@ -9,13 +9,14 @@ import com.junmoyu.iam.model.constant.AuthConst;
 import com.junmoyu.iam.model.dto.AccessTokenCache;
 import com.junmoyu.iam.model.dto.AuthSessionCache;
 import com.junmoyu.iam.model.dto.RefreshTokenCache;
+import com.junmoyu.iam.model.entity.PermissionEntity;
 import com.junmoyu.iam.model.entity.UserEntity;
 import com.junmoyu.iam.model.request.LoginRequest;
 import com.junmoyu.iam.model.request.RefreshRequest;
 import com.junmoyu.iam.model.response.PermissionTreeNode;
 import com.junmoyu.iam.model.response.TokenResponse;
-import com.junmoyu.iam.repository.PermissionRepository;
 import com.junmoyu.iam.repository.UserRepository;
+import com.junmoyu.iam.util.PermissionUtils;
 import com.junmoyu.security.SecurityProperties;
 import com.junmoyu.security.core.Authentication;
 import com.junmoyu.security.core.SecurityContext;
@@ -36,7 +37,6 @@ import java.util.List;
 public class AuthService {
 
     private final UserRepository userRepository;
-    private final PermissionRepository permissionRepository;
 
     private final RedisUtils redisUtils;
     private final PasswordEncoder passwordEncoder;
@@ -70,12 +70,10 @@ public class AuthService {
         // 缓存新数据
         redisUtils.set(AuthConst.userSessionKey(userId), sessionId, refreshExpire);
 
-        AuthSessionCache sessionCache = new AuthSessionCache(sessionId, userId, user.getUsername(), accessToken,
-                refreshToken, roleCodes, permissionCodes, request.getIp(), request.getUserAgent(), now);
+        AuthSessionCache sessionCache = new AuthSessionCache(sessionId, userId, user.getUsername(), accessToken, refreshToken, roleCodes, permissionCodes, request.getIp(), request.getUserAgent(), now);
         redisUtils.set(AuthConst.sessionKey(sessionId), sessionCache, refreshExpire);
 
-        AccessTokenCache accessTokenCache = new AccessTokenCache(sessionId, userId, user.getUsername(),
-                request.getIp(), request.getUserAgent(), now, accessExpire, roleCodes, permissionCodes);
+        AccessTokenCache accessTokenCache = new AccessTokenCache(sessionId, userId, user.getUsername(), request.getIp(), request.getUserAgent(), now, accessExpire, roleCodes, permissionCodes);
         redisUtils.set(AuthConst.accessKey(accessToken), accessTokenCache, accessExpire);
 
         RefreshTokenCache refreshTokenCache = new RefreshTokenCache(sessionId, now, refreshExpire);
@@ -99,10 +97,8 @@ public class AuthService {
             throw new AuthException(AuthErrorCode.AUTH_FAILED);
         }
 
-        if (!request.getIp().equalsIgnoreCase(oldSessionCache.clientIp())
-                || !request.getUserAgent().equalsIgnoreCase(oldSessionCache.userAgent())) {
-            log.error("客户端IP / User-Agent 发生变化，IP 变化：{} -> {}，User-Agent 变化：{} -> {}",
-                    oldSessionCache.clientIp(), request.getIp(), oldSessionCache.userAgent(), request.getUserAgent());
+        if (!request.getIp().equalsIgnoreCase(oldSessionCache.clientIp()) || !request.getUserAgent().equalsIgnoreCase(oldSessionCache.userAgent())) {
+            log.error("客户端IP / User-Agent 发生变化，IP 变化：{} -> {}，User-Agent 变化：{} -> {}", oldSessionCache.clientIp(), request.getIp(), oldSessionCache.userAgent(), request.getUserAgent());
         }
 
         long accessExpire = securityProperties.getAccessExpire() + RandomUtil.randomInt(100, 200);
@@ -115,13 +111,10 @@ public class AuthService {
         String refreshToken = IdUtil.simpleUUID();
 
 
-        AuthSessionCache authSessionCache = new AuthSessionCache(sid, userId, oldSessionCache.username(),
-                accessToken, refreshToken, oldSessionCache.roles(), oldSessionCache.permissions(),
-                request.getIp(), request.getUserAgent(), oldSessionCache.loginAt());
+        AuthSessionCache authSessionCache = new AuthSessionCache(sid, userId, oldSessionCache.username(), accessToken, refreshToken, oldSessionCache.roles(), oldSessionCache.permissions(), request.getIp(), request.getUserAgent(), oldSessionCache.loginAt());
         redisUtils.set(AuthConst.sessionKey(sid), authSessionCache, refreshExpire);
 
-        AccessTokenCache accessTokenCache = new AccessTokenCache(sid, userId, authSessionCache.username(), request.getIp(),
-                request.getUserAgent(), now, accessExpire, authSessionCache.roles(), authSessionCache.permissions());
+        AccessTokenCache accessTokenCache = new AccessTokenCache(sid, userId, authSessionCache.username(), request.getIp(), request.getUserAgent(), now, accessExpire, authSessionCache.roles(), authSessionCache.permissions());
         redisUtils.set(AuthConst.accessKey(accessToken), accessTokenCache, accessExpire);
 
         RefreshTokenCache refreshTokenCache = new RefreshTokenCache(sid, now, refreshExpire);
@@ -135,7 +128,12 @@ public class AuthService {
     }
 
     public List<PermissionTreeNode> menus() {
-        return permissionRepository.tree(2);
+        Authentication authentication = SecurityContext.getAuthentication();
+        List<PermissionEntity> permissions = userRepository.mapper().listPermissions(authentication.userId());
+
+        List<PermissionTreeNode> permissionTreeNodes = PermissionUtils.buildTree(permissions);
+        PermissionUtils.sortTree(permissionTreeNodes);
+        return permissionTreeNodes;
     }
 
     private void clearAuthCache(Long userId) {

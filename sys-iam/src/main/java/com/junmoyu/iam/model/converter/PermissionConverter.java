@@ -15,7 +15,7 @@ public interface PermissionConverter {
 
     PermissionConverter INSTANCE = Mappers.getMapper(PermissionConverter.class);
 
-    @Mapping(target = "children", ignore = true)
+    @Mapping(target = "children", expression = "java(new java.util.ArrayList<>())")
     PermissionTreeNode toTreeNode(PermissionEntity entity);
 
     @Mapping(target = "parentName", ignore = true)
